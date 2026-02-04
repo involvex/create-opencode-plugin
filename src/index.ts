@@ -1,10 +1,12 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
 import { program } from 'commander'
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const TEMPLATE_DIR = join(dirname(import.meta.path), '..', 'template')
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const TEMPLATE_DIR = join(__dirname, '..', 'template')
 
 program
 	.name('create-opencode-plugin')
