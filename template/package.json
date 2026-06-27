@@ -15,14 +15,18 @@
 	"main": "src/index.ts",
 	"scripts": {
 		"dev": "bun run dev.ts",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"format": "prettier . --write"
 	},
 	"dependencies": {
 		"@opencode-ai/plugin": "{{OPENCODE_PLUGIN_VERSION}}",
 		"@opencode-ai/sdk": "{{OPENCODE_SDK_VERSION}}"
 	},
 	"devDependencies": {
-		"@types/bun": "^1.3.8",
-		"typescript": "^5.7.2"
-	}
+		"@types/bun": "latest",
+		"typescript": "latest",
+		"prettier": "latest",
+		"@involvex/prettier-config": "0.0.5"
+	},
+	"prettier": "@involvex/prettier-config"
 }

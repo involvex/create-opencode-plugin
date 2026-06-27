@@ -8,9 +8,9 @@
 	},
 	"rules": {
 		"no-unused-vars": "error",
-		"no-unused-imports": "error",
 		"no-unused-private-class-members": "error",
-		"no-await-in-loop": "off"
+		"no-await-in-loop": "off",
+		"no-underscore-dangle": "off"
 	},
 	"ignorePatterns": ["**/node_modules", "**/dist", "**/bun.lock", "**/template"]
 }
