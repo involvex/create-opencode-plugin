@@ -1,0 +1,4 @@
+dist
+template
+node_modules
+.test

@@ -12,6 +12,6 @@
 		"rootDir": "./src",
 		"types": ["node"]
 	},
-	"include": ["src/**/*"],
+	"include": ["src/**/*", "eslint.config.js"],
 	"exclude": ["node_modules", "dist", "template"]
 }

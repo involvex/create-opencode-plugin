@@ -1,7 +1,8 @@
 {
 	"name": "{{PACKAGE_NAME}}",
 	"version": "0.1.0",
-	"description": "OpenCode plugin",
+	"description": "{{DESCRIPTION}}",
+	"author": "{{AUTHOR}}",
 	"keywords": [
 		"opencode",
 		"opencode-plugin",
@@ -16,7 +17,8 @@
 	"scripts": {
 		"dev": "bun run dev.ts",
 		"typecheck": "tsc --noEmit",
-		"format": "prettier . --write"
+		"format": "prettier . --write",
+		"lint": "eslint ."
 	},
 	"dependencies": {
 		"@opencode-ai/plugin": "{{OPENCODE_PLUGIN_VERSION}}",
@@ -26,7 +28,10 @@
 		"@types/bun": "latest",
 		"typescript": "latest",
 		"prettier": "latest",
-		"@involvex/prettier-config": "0.0.5"
+		"@involvex/prettier-config": "0.0.5",
+		"eslint": "^9.21.0",
+		"@eslint/js": "^9.21.0",
+		"typescript-eslint": "^8.24.1"
 	},
 	"prettier": "@involvex/prettier-config"
 }
