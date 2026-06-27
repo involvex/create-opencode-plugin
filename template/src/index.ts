@@ -1,4 +1,4 @@
-import type { Plugin, PluginInput } from '@opencode-ai/plugin'
+import { Plugin, PluginInput } from '@opencode-ai/plugin'
 
 /**
  * {{PLUGIN_NAME}} - OpenCode Plugin
