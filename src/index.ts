@@ -208,9 +208,15 @@ async function create(initialDirectory?: string): Promise<void> {
 		console.log(`  cd ${basename(targetDir)}`)
 	}
 	if (!results.install) {
-		console.log('  bun install  (or npm install)')
+		console.log('  bun install           # install dependencies')
 	}
-	console.log('  bun dev      (or npm run dev)')
+	console.log(
+		'  bun run setup         # register plugin globally in ~/.config/opencode/opencode.json',
+	)
+	console.log('  bun dev               # run OpenCode with plugin loaded from source (dev mode)')
+	console.log()
+	console.log('To remove from global config later:')
+	console.log('  bun run unregister')
 	console.log()
 }
 

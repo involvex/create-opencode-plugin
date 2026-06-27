@@ -14,6 +14,27 @@ Add to your `opencode.json` (global or per-project):
 
 OpenCode will automatically install the plugin on next launch.
 
+## Quick Start (Global Registration)
+
+The fastest way to load your plugin into OpenCode globally:
+
+```bash
+bun run setup
+```
+
+This will:
+1. Install dependencies (if `node_modules/` is missing)
+2. Prompt for confirmation
+3. Add your plugin to `~/.config/opencode/opencode.json` using its absolute `file:///` path
+
+Then **restart OpenCode** — your plugin is live.
+
+To remove it:
+
+```bash
+bun run unregister
+```
+
 ## Development
 
 ```bash
@@ -33,6 +54,8 @@ bun typecheck
 {{PACKAGE_NAME}}/
 ├── src/
 │   └── index.ts      # Plugin entry point with all available hooks
+├── setup.ts          # Register plugin globally in ~/.config/opencode/opencode.json
+├── unregister.ts     # Remove plugin from global config
 ├── dev.ts            # Development script (runs OpenCode with plugin)
 ├── package.json
 ├── tsconfig.json

@@ -16,6 +16,8 @@
 	"main": "src/index.ts",
 	"scripts": {
 		"dev": "bun run dev.ts",
+		"setup": "bun run setup.ts",
+		"unregister": "bun run unregister.ts",
 		"typecheck": "tsc --noEmit",
 		"format": "prettier . --write",
 		"lint": "eslint .",
@@ -28,6 +30,7 @@
 	},
 	"devDependencies": {
 		"@types/bun": "latest",
+		"@clack/prompts": "latest",
 		"typescript": "latest",
 		"prettier": "latest",
 		"@involvex/prettier-config": "0.0.5",
