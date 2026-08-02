@@ -3,16 +3,13 @@
 		"target": "ES2022",
 		"module": "ESNext",
 		"moduleResolution": "bundler",
-		"lib": ["ES2022", "dom"],
+		"lib": ["ES2022"],
 		"strict": true,
 		"esModuleInterop": true,
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true,
-		"noEmit": true,
-		"outDir": "./dist",
-		"rootDir": "./src",
-		"types": ["node"]
+		"noEmit": true
 	},
-	"include": ["src/**/*", "eslint.config.js"],
-	"exclude": ["node_modules", "dist", "template"]
+	"include": ["src/**/*", "dev.ts"],
+	"exclude": ["node_modules"]
 }

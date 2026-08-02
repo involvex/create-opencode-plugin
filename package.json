@@ -14,44 +14,44 @@
 	"bugs": {
 		"url": "https://github.com/involvex/create-opencode-plugin/issues"
 	},
-	"license": "MIT",
-	"author": "InvolveX",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/involvex/create-opencode-plugin.git"
 	},
+	"license": "MIT",
+	"author": "InvolveX",
+	"type": "module",
 	"bin": {
 		"create-opencode-plugin": "dist/index.js"
 	},
 	"files": [
 		"dist",
-		"template"
+		"template",
+		"template-minimal"
 	],
-	"type": "module",
 	"scripts": {
-		"dev": "bun run src/index.ts",
-		"build": "rm -rf dist && bun build src/index.ts --outdir dist --target node --packages external",
-		"fmt": "oxfmt . --write",
-		"fmt:check": "oxfmt . --check",
-		"lint": "oxlint src/",
-		"lint:fix": "oxlint src/ --fix",
-		"prepublishOnly": "bun run build",
+		"prebuild": "bun run check",
+		"build": "bunx del-cli dist && bun build src/index.ts --outdir dist --target node --packages external",
 		"check": "bun fmt && bun lint:fix && bun typecheck",
-		"typecheck": "tsc --noEmit",
-		"prebuild": "bun run check"
+		"dev": "bun run src/index.ts",
+		"fmt": "prettier . --write",
+		"fmt:check": "prettier . --check",
+		"lint": "eslint src/",
+		"lint:fix": "eslint src/ --fix",
+		"prepublishOnly": "bun run build",
+		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@clack/prompts": "^1.6.0",
+		"@clack/prompts": "^1.7.0",
 		"commander": "^15.0.0"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
 		"@types/bun": "^1.3.14",
-		"@types/node": "^26.0.1",
-		"eslint": "^10.6.0",
-		"oxfmt": "^0.56.0",
-		"oxlint": "^1.71.0",
-		"typescript": "^6.0.3",
-		"typescript-eslint": "^8.62.0"
+		"@types/node": "^26.1.2",
+		"eslint": "^10.8.0",
+		"prettier": "^3.9.6",
+		"typescript": "^6.0.2",
+		"typescript-eslint": "^8.65.0"
 	}
 }

@@ -33,10 +33,6 @@ bun.lockb
 *.min.js.map
 *.min.css.map
 
-# Template directories (contain placeholder syntax)
-template/
-template-minimal/
-
 # System Files
 .DS_Store
 Thumbs.db

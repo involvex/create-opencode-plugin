@@ -21,7 +21,7 @@ bun create opencode-plugin .
 
 - TypeScript configuration
 - Build setup with Bun
-- oxlint + oxfmt for linting and formatting
+- Prettier + ESLint for linting and formatting
 - `bun dev` - run OpenCode with your plugin loaded from source
 - `bun check` - run all checks (format, lint, typecheck)
 - `npm publish` ready
@@ -35,8 +35,9 @@ my-plugin/
   dev.ts         # Development script
   package.json
   tsconfig.json
-  .oxlintrc.json
-  .oxfmtrc.json
+  eslint.config.js
+  .prettierrc.json
+  .prettierignore
   .gitignore
   README.md
 ```

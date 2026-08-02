@@ -8,7 +8,7 @@ Add to your `opencode.json` (global or per-project):
 
 ```json
 {
-  "plugin": ["{{PACKAGE_NAME}}@latest"]
+	"plugin": ["{{PACKAGE_NAME}}@latest"]
 }
 ```
 
@@ -23,6 +23,7 @@ bun run setup
 ```
 
 This will:
+
 1. Install dependencies (if `node_modules/` is missing)
 2. Prompt for confirmation
 3. Add your plugin to `~/.config/opencode/opencode.json` using its absolute `file:///` path
@@ -76,15 +77,15 @@ Your plugin receives a context object with:
 
 See `src/index.ts` for all available hooks with descriptions. Key hooks:
 
-| Hook | Description |
-|------|-------------|
-| `event` | Subscribe to OpenCode events (session.idle, file.edited, etc.) |
-| `chat.message` | Intercept user messages |
-| `chat.params` | Modify LLM parameters (temperature, etc.) |
-| `tool.execute.before` | Modify tool arguments or block execution |
-| `tool.execute.after` | Process tool results |
-| `permission.ask` | Auto-allow/deny permissions |
-| `tool` | Register custom tools |
+| Hook                  | Description                                                    |
+| --------------------- | -------------------------------------------------------------- |
+| `event`               | Subscribe to OpenCode events (session.idle, file.edited, etc.) |
+| `chat.message`        | Intercept user messages                                        |
+| `chat.params`         | Modify LLM parameters (temperature, etc.)                      |
+| `tool.execute.before` | Modify tool arguments or block execution                       |
+| `tool.execute.after`  | Process tool results                                           |
+| `permission.ask`      | Auto-allow/deny permissions                                    |
+| `tool`                | Register custom tools                                          |
 
 ### Logging
 
@@ -133,7 +134,7 @@ After publishing, users can install with:
 
 ```json
 {
-  "plugin": ["{{PACKAGE_NAME}}@latest"]
+	"plugin": ["{{PACKAGE_NAME}}@latest"]
 }
 ```
 
