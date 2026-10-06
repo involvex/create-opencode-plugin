@@ -8,26 +8,38 @@ const CONFIG_FILE = join(homedir(), '.config', 'opencode', 'opencode.json')
 const PLUGIN_ENTRY_PATH = resolve(dirname(import.meta.path), 'src', 'index.ts')
 const PLUGIN_URL = pathToFileURL(PLUGIN_ENTRY_PATH).href
 
-function readConfig(): Record<string, unknown> {
+type PluginEntry = string | { package: string; options?: Record<string, unknown> }
+
+interface OpenCodeConfig {
+	$schema?: string
+	plugins?: PluginEntry[]
+	[key: string]: unknown
+}
+
+function readConfig(): OpenCodeConfig {
 	if (!existsSync(CONFIG_FILE)) {
 		p.log.warn(`Config file not found: ${CONFIG_FILE}`)
 		p.log.info('Nothing to unregister.')
 		process.exit(0)
 	}
 	try {
-		return JSON.parse(readFileSync(CONFIG_FILE, 'utf-8')) as Record<string, unknown>
+		return JSON.parse(readFileSync(CONFIG_FILE, 'utf-8')) as OpenCodeConfig
 	} catch {
 		p.log.warn(`Could not parse ${CONFIG_FILE}.`)
 		process.exit(1)
 	}
 }
 
+function isPluginEntry(entry: PluginEntry, url: string): boolean {
+	return typeof entry === 'object' && entry !== null && entry.package === url
+}
+
 p.intro('OpenCode Plugin Unregister')
 
 const config = readConfig()
-const plugins: string[] = Array.isArray(config.plugin) ? (config.plugin as string[]) : []
+const plugins: PluginEntry[] = Array.isArray(config.plugins) ? config.plugins : []
 
-if (!plugins.includes(PLUGIN_URL)) {
+if (!plugins.some((entry) => isPluginEntry(entry, PLUGIN_URL))) {
 	p.note(PLUGIN_URL, 'Not registered')
 	p.outro('Plugin is not in your global OpenCode config. Nothing to remove.')
 	process.exit(0)
@@ -54,7 +66,7 @@ if (p.isCancel(confirmed) || !confirmed) {
 const sWrite = p.spinner()
 sWrite.start('Updating config...')
 
-config.plugin = plugins.filter((entry) => entry !== PLUGIN_URL)
+config.plugins = plugins.filter((entry) => !isPluginEntry(entry, PLUGIN_URL))
 writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2) + '\n', 'utf-8')
 
 sWrite.stop('Config updated.')

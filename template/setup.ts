@@ -10,16 +10,28 @@ const CONFIG_FILE = join(CONFIG_DIR, 'opencode.json')
 const PLUGIN_ENTRY_PATH = resolve(dirname(import.meta.path), 'src', 'index.ts')
 const PLUGIN_URL = pathToFileURL(PLUGIN_ENTRY_PATH).href
 
-function readConfig(): Record<string, unknown> {
+type PluginEntry = string | { package: string; options?: Record<string, unknown> }
+
+interface OpenCodeConfig {
+	$schema?: string
+	plugins?: PluginEntry[]
+	[key: string]: unknown
+}
+
+function readConfig(): OpenCodeConfig {
 	if (!existsSync(CONFIG_FILE)) {
-		return { $schema: 'https://opencode.ai/config.json', plugin: [] }
+		return { $schema: 'https://opencode.ai/config.json', plugins: [] }
 	}
 	try {
-		return JSON.parse(readFileSync(CONFIG_FILE, 'utf-8')) as Record<string, unknown>
+		return JSON.parse(readFileSync(CONFIG_FILE, 'utf-8')) as OpenCodeConfig
 	} catch {
 		p.log.warn(`Could not parse existing ${CONFIG_FILE} — starting with a fresh config.`)
-		return { $schema: 'https://opencode.ai/config.json', plugin: [] }
+		return { $schema: 'https://opencode.ai/config.json', plugins: [] }
 	}
+}
+
+function isPluginEntry(entry: PluginEntry, url: string): boolean {
+	return typeof entry === 'object' && entry !== null && entry.package === url
 }
 
 function ensureDependencies(): void {
@@ -44,9 +56,9 @@ p.intro('OpenCode Plugin Setup')
 ensureDependencies()
 
 const config = readConfig()
-const plugins: string[] = Array.isArray(config.plugin) ? (config.plugin as string[]) : []
+const plugins: PluginEntry[] = Array.isArray(config.plugins) ? config.plugins : []
 
-if (plugins.includes(PLUGIN_URL)) {
+if (plugins.some((entry) => isPluginEntry(entry, PLUGIN_URL))) {
 	p.note(PLUGIN_URL, 'Already registered')
 	p.outro('Plugin is already in your global OpenCode config. Nothing to do.')
 	process.exit(0)
@@ -78,7 +90,7 @@ if (!existsSync(CONFIG_DIR)) {
 	mkdirSync(CONFIG_DIR, { recursive: true })
 }
 
-config.plugin = [...plugins, PLUGIN_URL]
+config.plugins = [...plugins, { package: PLUGIN_URL }]
 writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2) + '\n', 'utf-8')
 
 sWrite.stop('Config updated.')

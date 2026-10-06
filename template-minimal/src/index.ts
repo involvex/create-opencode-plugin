@@ -1,49 +1,62 @@
-import { Plugin, PluginInput, tool } from '@opencode-ai/plugin'
+import { Plugin } from '@opencode/plugin'
+import { Effect, Schema } from 'effect'
 
 /**
- * {{PLUGIN_NAME}} - OpenCode Plugin (Minimal)
+ * {{PLUGIN_NAME}} - OpenCode Plugin (V2, Minimal)
  *
- * Documentation: https://opencode.ai/docs/plugins/
- * SDK Reference: https://opencode.ai/docs/sdk/
+ * Documentation: https://opencode.ai/v2/docs/build/plugins
+ * SDK Reference: https://opencode.ai/v2/docs/sdk
  */
-export const {{PLUGIN_NAME}}: Plugin = async (ctx: PluginInput) => {
-	await ctx.client.app.log({
-		body: {
-			service: '{{PACKAGE_NAME}}',
-			level: 'info',
-			message: 'plugin initialized',
-		},
-	})
+export default Plugin.define({
+	id: '{{PACKAGE_NAME}}',
+	setup(ctx) {
+		// ctx provides domain services:
+		// - app: { name, version, channel }
+		// - location: { directory, project: { id, directory, canonical } }
+		// - options: Readonly<Record<string, any>> — plugin options from config
+		// - storage: { get, set, remove, scan } — persisted key-value state
+		// - tool: ToolDomain — transform, list, hook
+		// - session: SessionDomain — hook
+		// - event: EventDomain — subscribe
+		// - permission: PermissionDomain — hook('evaluate')
+		// - shell: ShellDomain — hook('create.before')
+		// - command: CommandDomain — transform
+		// - etc.
 
-	return {
-		tool: {
-			greet: tool({
+		console.log('[{{PACKAGE_NAME}}] plugin initialized')
+
+		// Register a custom tool using Effect's Schema for input definition
+		ctx.tool.transform((editor) => {
+			editor.add({
+				name: 'greet',
 				description: 'Greet a person by name. Call this tool whenever you want to greet someone.',
-				args: {
-					name: tool.schema.string({ description: 'The name of the person to greet' }),
+				input: Schema.Struct({
+					name: Schema.String({ description: 'The name of the person to greet' }),
+				}),
+				execute: ({ name }) => {
+					return Effect.succeed({
+						content: [{ type: 'text' as const, text: `Hello, ${name}!` }],
+					})
 				},
-				async execute(args) {
-					return `Hello, ${args.name}!`
-				},
-			}),
-		},
+			})
+		})
 
-		'tool.execute.before': async (input, output) => {
-			if (input.tool === 'read' && output.args.filePath.includes('.env')) {
+		// Block reading .env files (throw to prevent execution)
+		ctx.tool.hook('execute.before', ({ tool, input }) => {
+			if (tool === 'read' && String(input).includes('.env')) {
 				throw new Error('Cannot read .env files')
 			}
-		},
+		})
 
-		event: async ({ event }) => {
+		// Subscribe to events — log when a session completes
+		ctx.event.subscribe(({ event }) => {
 			if (event.type === 'session.idle') {
-				await ctx.client.app.log({
-					body: {
-						service: '{{PACKAGE_NAME}}',
-						level: 'info',
-						message: 'session completed',
-					},
-				})
+				console.log('[{{PACKAGE_NAME}}] session completed')
 			}
-		},
-	}
-}
+		})
+
+		return async () => {
+			console.log('[{{PACKAGE_NAME}}] plugin cleaned up')
+		}
+	},
+})

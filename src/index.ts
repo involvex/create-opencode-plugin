@@ -105,23 +105,23 @@ async function getLatestVersion(packageName: string): Promise<string> {
 		const data = (await res.json()) as { version: string }
 		return `^${data.version}`
 	} catch {
-		return '^1.1.44'
+		return '^2.0.0'
 	}
 }
 
 async function getVersions(): Promise<{ pluginVersion: string; sdkVersion: string }> {
 	const sVersions = p.spinner()
-	sVersions.start('Fetching latest @opencode-ai package versions...')
+	sVersions.start('Fetching latest @opencode package versions...')
 	try {
 		const [pluginVersion, sdkVersion] = await Promise.all([
-			getLatestVersion('@opencode-ai/plugin'),
-			getLatestVersion('@opencode-ai/sdk'),
+			getLatestVersion('@opencode/plugin'),
+			getLatestVersion('@opencode/sdk'),
 		])
 		sVersions.stop('Package versions resolved.')
 		return { pluginVersion, sdkVersion }
 	} catch {
 		sVersions.stop('Could not fetch versions. Using fallback versions.')
-		return { pluginVersion: '^1.1.44', sdkVersion: '^1.1.44' }
+		return { pluginVersion: '^2.0.0', sdkVersion: '^2.0.0' }
 	}
 }
 
@@ -169,7 +169,7 @@ async function create(
 ): Promise<void> {
 	p.intro('Create a new OpenCode Plugin')
 
-	const skipPrompts = options.noPrompts === true || process.env.MOCK_PROMPTS === 'true'
+	const skipPrompts = options.prompts === false || process.env.MOCK_PROMPTS === 'true'
 	const cliTemplate = options.template as 'full' | 'minimal' | undefined
 
 	const defaults = {
@@ -188,7 +188,8 @@ async function create(
 			templateType: cliTemplate || 'full',
 			git: options.git !== false,
 			install: options.install !== false,
-			packageManager: typeof options.packageManager === 'string' ? options.packageManager : 'bun',
+			packageManager:
+				typeof options.packageManager === 'string' ? (options.packageManager as string) : 'bun',
 		}
 	} else {
 		const groupResult = await p.group(

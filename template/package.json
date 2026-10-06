@@ -25,8 +25,9 @@
 		"unregister": "bun run unregister.ts"
 	},
 	"dependencies": {
-		"@opencode-ai/plugin": "{{OPENCODE_PLUGIN_VERSION}}",
-		"@opencode-ai/sdk": "{{OPENCODE_SDK_VERSION}}"
+		"@opencode/plugin": "{{OPENCODE_PLUGIN_VERSION}}",
+		"@opencode/sdk": "{{OPENCODE_SDK_VERSION}}",
+		"effect": "^3.16.0"
 	},
 	"devDependencies": {
 		"@clack/prompts": "^1.7.0",

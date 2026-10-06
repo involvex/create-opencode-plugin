@@ -1,14 +1,16 @@
 # {{PACKAGE_NAME}}
 
-OpenCode plugin.
+OpenCode V2 plugin.
 
 ## Installation
 
-Add to your `opencode.json` (global or per-project):
+Add to your `opencode.json` (global or per-project) using the V2 config format:
 
 ```json
 {
-	"plugin": ["{{PACKAGE_NAME}}@latest"]
+	"plugins": [
+		{ "package": "{{PACKAGE_NAME}}@latest" }
+	]
 }
 ```
 
@@ -54,7 +56,7 @@ bun typecheck
 ```
 {{PACKAGE_NAME}}/
 ├── src/
-│   └── index.ts      # Plugin entry point with all available hooks
+│   └── index.ts      # Plugin entry point (V2 Plugin.define pattern)
 ├── setup.ts          # Register plugin globally in ~/.config/opencode/opencode.json
 ├── unregister.ts     # Remove plugin from global config
 ├── dev.ts            # Development script (runs OpenCode with plugin)
@@ -63,65 +65,95 @@ bun typecheck
 └── ...
 ```
 
-### Plugin Context
+### Plugin Architecture
 
-Your plugin receives a context object with:
+V2 plugins use `Plugin.define({ id, setup(ctx) })`:
 
-- `client` - OpenCode SDK client for API calls (logging, toasts, etc.)
-- `project` - Current project information
-- `directory` - Current working directory
-- `worktree` - Git worktree path
-- `$` - Bun shell for executing commands
+```typescript
+import { Plugin } from '@opencode/plugin'
+
+export default Plugin.define({
+	id: '{{PACKAGE_NAME}}',
+	setup(ctx) {
+		// ctx provides domain services:
+		// - app: { name, version, channel }
+		// - location: { directory, project: { id, directory, canonical } }
+		// - options: PluginOptions (from config)
+		// - storage: { get, set, remove, scan }
+		// - tool: ToolDomain — transform, list, hook
+		// - session: SessionDomain — hook
+		// - event: subscribe
+		// - permission: hook('evaluate')
+		// - shell: hook('create.before')
+		// - command: transform
+		// - etc.
+
+		// Register hooks and tools programmatically:
+		// ctx.event.subscribe(({ event }) => { ... })
+		// ctx.session.hook('prompt', ({ prompt }) => { ... })
+		// ctx.tool.hook('execute.before', ({ tool, input }) => { ... })
+		// ctx.permission.hook('evaluate', ({ effect }) => { ... })
+
+		return async () => {
+			// optional cleanup
+		}
+	},
+})
+```
 
 ### Available Hooks
 
-See `src/index.ts` for all available hooks with descriptions. Key hooks:
+Hooks are registered programmatically via domain `.hook()` APIs. Key hooks:
 
-| Hook                  | Description                                                    |
-| --------------------- | -------------------------------------------------------------- |
-| `event`               | Subscribe to OpenCode events (session.idle, file.edited, etc.) |
-| `chat.message`        | Intercept user messages                                        |
-| `chat.params`         | Modify LLM parameters (temperature, etc.)                      |
-| `tool.execute.before` | Modify tool arguments or block execution                       |
-| `tool.execute.after`  | Process tool results                                           |
-| `permission.ask`      | Auto-allow/deny permissions                                    |
-| `tool`                | Register custom tools                                          |
+| Domain | Hook Registration | Description |
+|--------|-------------------|-------------|
+| `ctx.event` | `subscribe(cb)` | Subscribe to events (session.idle, etc.) |
+| `ctx.session` | `hook('prompt', cb)` | Intercept/modify user prompts |
+| `ctx.session` | `hook('context', cb)` | Modify LLM params, system prompt, messages |
+| `ctx.session` | `hook('compaction', cb)` | Customize session compaction |
+| `ctx.session` | `hook('model.request', cb)` | Add headers to LLM requests |
+| `ctx.tool` | `hook('execute.before', cb)` | Before tool execution |
+| `ctx.tool` | `hook('execute.after', cb)` | After tool execution |
+| `ctx.permission` | `hook('evaluate', cb)` | Auto-allow/deny permissions |
+| `ctx.shell` | `hook('create.before', cb)` | Inject env vars into shell |
+
+See `src/index.ts` for all available hooks with descriptions.
 
 ### Logging
 
-Use `client.app.log()` for structured logging instead of `console.log`:
+Use `console.log` for logging:
 
 ```typescript
-await ctx.client.app.log({
-  body: {
-    service: '{{PACKAGE_NAME}}',
-    level: 'info', // 'debug' | 'info' | 'warn' | 'error'
-    message: 'Something happened',
-    extra: { foo: 'bar' },
-  },
-})
+console.log('{{PACKAGE_NAME}} something happened')
 ```
 
 ### Custom Tools
 
-```typescript
-import { tool } from '@opencode-ai/plugin'
+V2 tools use Effect's `Schema` for input validation:
 
-export const MyPlugin: Plugin = async (ctx) => {
-  return {
-    tool: {
-      mytool: tool({
-        description: 'What this tool does',
-        args: {
-          input: tool.schema.string(),
-        },
-        async execute(args, context) {
-          return `Result: ${args.input}`
-        },
-      }),
-    },
-  }
-}
+```typescript
+import { Plugin } from '@opencode/plugin'
+import { Effect, Schema } from 'effect'
+
+export default Plugin.define({
+	id: '{{PACKAGE_NAME}}',
+	setup(ctx) {
+		ctx.tool.transform((editor) => {
+			editor.add({
+				name: 'mytool',
+				description: 'What this tool does',
+				input: Schema.Struct({
+					input: Schema.String,
+				}),
+				execute: ({ input }) => {
+					return Effect.succeed({
+						content: [{ type: 'text' as const, text: `Result: ${input}` }],
+					})
+				},
+			})
+		})
+	},
+})
 ```
 
 ## Publishing
@@ -130,19 +162,36 @@ export const MyPlugin: Plugin = async (ctx) => {
 npm publish
 ```
 
-After publishing, users can install with:
+After publishing, users can install with V2 config format:
 
 ```json
 {
-	"plugin": ["{{PACKAGE_NAME}}@latest"]
+	"plugins": [
+		{ "package": "{{PACKAGE_NAME}}@latest" }
+	]
 }
 ```
 
+## V1 → V2 Migration
+
+If you're migrating from V1:
+
+| V1 (Old) | V2 (New) |
+|---|---|
+| `@opencode-ai/plugin` | `@opencode/plugin` |
+| `@opencode-ai/sdk` | `@opencode/sdk` |
+| `export const MyPlugin = async (ctx) => {}` | `export default Plugin.define({ id, setup(ctx) => {} })` |
+| Return hooks from setup | Register via `ctx.domain.hook()` |
+| `tool.schema.string()` | `Schema.String` from `effect` |
+| `ctx.client.app.log()` | `console.log` |
+| `"plugin": ["name"]` | `"plugins": [{ "package": "name" }]` |
+| `permission.ask` with `output.status` | `ctx.permission.hook('evaluate', ({ effect }) => { effect = 'allow' })` |
+
 ## Resources
 
-- [Plugin Documentation](https://opencode.ai/docs/plugins/)
-- [SDK Reference](https://opencode.ai/docs/sdk/)
-- [Community Plugins](https://opencode.ai/docs/ecosystem/#plugins)
+- [Plugin Documentation](https://opencode.ai/v2/docs/build/plugins)
+- [SDK Reference](https://opencode.ai/v2/docs/sdk)
+- [Community Plugins](https://opencode.ai/v2/docs/ecosystem/#plugins)
 - [OpenCode Discord](https://opencode.ai/discord)
 
 ## License

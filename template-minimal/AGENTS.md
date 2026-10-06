@@ -1,91 +1,146 @@
-# OpenCode Plugin Development
+# OpenCode Plugin Development (V2)
 
-This is an OpenCode plugin. OpenCode is an AI-powered coding assistant that runs in the terminal.
+This is an OpenCode V2 plugin. OpenCode is an AI-powered coding assistant that runs in the terminal.
+V2 uses the `@opencode/plugin` package with the `Plugin.define({ id, setup(ctx) })` pattern.
 
 ## Documentation
 
-- [Plugin Documentation](https://opencode.ai/docs/plugins/)
-- [SDK Reference](https://opencode.ai/docs/sdk/)
-- [Community Plugins](https://opencode.ai/docs/ecosystem/#plugins)
+- [Plugin Documentation](https://opencode.ai/v2/docs/build/plugins)
+- [SDK Reference](https://opencode.ai/v2/docs/sdk)
+- [Community Plugins](https://opencode.ai/v2/docs/ecosystem/#plugins)
 
 ## Project Structure
 
 ```
 src/
-  index.ts    # Plugin entry point - exports the plugin function
+  index.ts    # Plugin entry point - exports Plugin.define
 dev.ts        # Development script - runs OpenCode with this plugin loaded
 ```
 
-## Plugin Architecture
+## Plugin Architecture (V2)
 
-A plugin is a function that receives a context object and returns hooks:
+V2 plugins use `Plugin.define({ id, setup(ctx) })` — a declarative pattern where you
+register hooks and tools programmatically inside `setup`:
 
 ```typescript
-import type { Plugin, PluginInput } from '@opencode-ai/plugin'
+import { Plugin } from '@opencode/plugin'
+import { Effect, Schema } from 'effect'
 
-export const MyPlugin: Plugin = async (ctx: PluginInput) => {
-  // ctx provides:
-  // - client: OpenCode SDK client for API calls
-  // - project: Current project information
-  // - directory: Current working directory
-  // - worktree: Git worktree path
-  // - serverUrl: OpenCode server URL
-  // - $: Bun shell for executing commands
+export default Plugin.define({
+	id: '{{PACKAGE_NAME}}',
+	setup(ctx) {
+		// ctx provides domain services (see below)
+		// Register hooks, tools, commands here
 
-  return {
-    // Return hooks here
-  }
-}
+		return async () => {
+			// optional cleanup
+		}
+	},
+})
 ```
 
-## Available Hooks
+### Context Object (V2)
 
-### Event Hooks
+V2 replaces V1's `PluginInput` with a `Context` that exposes domain services:
 
-- `event` - Subscribe to OpenCode events (session.idle, file.edited, etc.)
-- `config` - Called when config is loaded
+| V1 `ctx` property | V2 equivalent | Description |
+|---|---|---|
+| `ctx.client` | `ctx.app` | Server info `{ name, version, channel }` |
+| `ctx.project` | `ctx.location.project` | Current project info |
+| `ctx.directory` | `ctx.location.directory` | Working directory |
+| `ctx.worktree` | N/A (VCS via `ctx.vcs`) | Worktree/VCS access |
+| `ctx.$` | N/A (use `Effect` in tools) | Shell execution |
+| `ctx.client.app.log()` | `console.log` | Use process logging instead |
+| `ctx.client.config.get()` | `ctx.options` | Plugin options from config |
+| N/A | `ctx.storage` | `{ get, set, remove, scan }` — persisted state |
+| N/A | `ctx.tool` | Tool management (`transform`, `list`, `hook`) |
+| N/A | `ctx.session` | Session hooks |
+| N/A | `ctx.event` | `subscribe(callback)` — event subscription |
+| N/A | `ctx.permission` | Permission hooks (`evaluate`) |
+| N/A | `ctx.shell` | Shell hooks (`create.before`) |
+| N/A | `ctx.command` | Command management (`transform`) |
+| N/A | `ctx.agent` | Agent management |
+| N/A | `ctx.model` | Model management |
+| N/A | `ctx.mcp` | MCP server management |
+| N/A | `ctx.provider` | Provider management |
 
-### Chat Hooks
+## Hook Registration (V2)
 
-- `chat.message` - Intercept user messages before processing
-- `chat.params` - Modify LLM parameters (temperature, topP, topK)
-- `chat.headers` - Add custom headers to LLM requests
-- `experimental.chat.messages.transform` - Transform messages before sending to AI
-- `experimental.chat.system.transform` - Transform system prompt
+V2 hooks are registered **programmatically** via domain `.hook()` APIs, not returned
+from the setup function as in V1. Each `.hook()` call returns a `Registration`
+with a `.dispose()` method.
+
+### Event Subscription
+
+```typescript
+ctx.event.subscribe(({ event }) => {
+	if (event.type === 'session.idle') {
+		console.log('Session completed')
+	}
+})
+```
+
+### Session Hooks (replaces V1 chat.* hooks)
+
+| V1 Hook | V2 Hook | Description |
+|---|---|---|
+| `chat.message` | `ctx.session.hook('prompt', cb)` | Intercept/modify user prompts |
+| `chat.params` | `ctx.session.hook('context', cb)` | Modify LLM options (temperature, etc.) |
+| `chat.system.transform` | `ctx.session.hook('context', cb)` | Modify system prompt |
+| `experimental.chat.messages.transform` | `ctx.session.hook('context', cb)` | Modify conversation messages |
+| `experimental.session.compacting` | `ctx.session.hook('compaction', cb)` | Customize session compaction |
+| `chat.headers` | `ctx.session.hook('model.request', cb)` | Add headers to LLM requests |
+| `permission.ask` | `ctx.permission.hook('evaluate', cb)` | Auto-allow/deny permissions |
+| `event` | `ctx.event.subscribe(cb)` | Subscribe to OpenCode events |
 
 ### Tool Hooks
 
-- `tool.execute.before` - Modify tool arguments or block execution
-- `tool.execute.after` - Process tool results
+| V1 Hook | V2 Hook | Description |
+|---|---|---|
+| `tool.execute.before` | `ctx.tool.hook('execute.before', cb)` | Before tool execution (throw to block) |
+| `tool.execute.after` | `ctx.tool.hook('execute.after', cb)` | After tool execution |
 
-### Other Hooks
+### Shell Hooks
 
-- `command.execute.before` - Intercept slash commands
-- `permission.ask` - Auto-allow/deny permissions
-- `shell.env` - Inject environment variables
-- `experimental.session.compacting` - Customize session compaction
-- `experimental.text.complete` - Called when text completion is done
+| V1 Hook | V2 Hook | Description |
+|---|---|---|
+| `shell.env` | `ctx.shell.hook('create.before', cb)` | Inject env vars, modify command |
 
-### Custom Tools
+### Hooks Without V2 Equivalents
 
-Plugins can register custom tools using the `tool` helper:
+These V1 hooks have no direct V2 equivalent:
+
+| V1 Hook | V2 Status |
+|---|---|
+| `config` | Use `ctx.options` instead (read plugin config) |
+| `command.execute.before` | Commands managed via `ctx.command.transform()` |
+| `experimental.text.complete` | No V2 equivalent |
+
+## Custom Tools (V2)
+
+V2 tools use Effect's `Schema` for input/output validation (not V1's `tool.schema.string()`).
 
 ```typescript
-import { tool } from '@opencode-ai/plugin'
+import { Plugin } from '@opencode/plugin'
+import { Effect, Schema } from 'effect'
 
-return {
-  tool: {
-    mytool: tool({
-      description: 'What this tool does',
-      args: {
-        input: tool.schema.string(),
-      },
-      async execute(args, context) {
-        return `Result: ${args.input}`
-      },
-    }),
-  },
-}
+export default Plugin.define({
+	id: '{{PACKAGE_NAME}}',
+	setup(ctx) {
+		ctx.tool.transform((editor) => {
+			editor.add({
+				name: 'mytool',
+				description: 'What this tool does',
+				input: Schema.Struct({ foo: Schema.String }),
+				execute: ({ foo }) => {
+					return Effect.succeed({
+						content: [{ type: 'text' as const, text: `Result: ${foo}` }],
+					})
+				},
+			})
+		})
+	},
+})
 ```
 
 ## Development Workflow
@@ -97,75 +152,33 @@ return {
 
 ## Logging
 
-Use structured logging instead of console.log:
+Use `console.log` for logging (V2 no longer provides `ctx.client.app.log`):
 
 ```typescript
-await ctx.client.app.log({
-  body: {
-    service: 'my-plugin',
-    level: 'info', // 'debug' | 'info' | 'warn' | 'error'
-    message: 'Something happened',
-    extra: { key: 'value' },
-  },
-})
+console.log('[{{PACKAGE_NAME}}] Something happened')
+```
+
+## Storage
+
+Use `ctx.storage` for persisted key-value state:
+
+```typescript
+// In setup:
+const value = await ctx.storage.get('my-key')
+await ctx.storage.set('my-key', { foo: 'bar' })
+await ctx.storage.remove('my-key')
 ```
 
 ## Publishing
 
 1. Update `package.json` with your plugin name, description, and repository
 2. Run `npm publish`
-3. Users install by adding to their `opencode.json`:
+3. Users install by adding to their `opencode.json` (V2 config format):
 
-```json
+```jsonc
 {
-	"plugin": ["your-plugin-name@latest"]
-}
-```
-
-## Common Patterns
-
-### Blocking Tool Execution
-
-```typescript
-'tool.execute.before': async (input, output) => {
-  if (input.tool === 'read' && output.args.filePath.includes('.env')) {
-    throw new Error('Cannot read .env files')
-  }
-}
-```
-
-### Auto-Approve Permissions
-
-```typescript
-'permission.ask': async (input, output) => {
-  if (input.tool === 'read') {
-    output.status = 'allow'
-  }
-}
-```
-
-### Send Notifications on Session Complete
-
-```typescript
-event: async ({ event }) => {
-  if (event.type === 'session.idle') {
-    await ctx.$`osascript -e 'display notification "Done!" with title "OpenCode"'`
-  }
-}
-```
-
-### Inject Environment Variables
-
-```typescript
-'shell.env': async (input, output) => {
-  output.env.MY_API_KEY = process.env.MY_API_KEY || ''
-}
-```
-
-### Modify LLM Temperature
-
-```typescript
-'chat.params': async (input, output) => {
-  output.temperature = 0.7
+	"plugins": [
+		{ "package": "{{PACKAGE_NAME}}@latest" }
+	]
 }
 ```
