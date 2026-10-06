@@ -1,6 +1,6 @@
 {
 	"name": "@involvex/create-opencode-plugin",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"description": "Create a new OpenCode plugin with a single command",
 	"keywords": [
 		"create",
