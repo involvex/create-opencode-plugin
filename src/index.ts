@@ -17,6 +17,7 @@ interface ScaffoldOptions {
 	description: string
 	author: string
 	templateType: 'full' | 'minimal'
+	gui: boolean
 	git: boolean
 	install: boolean
 	packageManager?: string
@@ -27,6 +28,8 @@ program
 	.description('Create a new OpenCode plugin project')
 	.argument('[directory]', 'Directory to create the plugin in')
 	.addOption(new Option('-t, --template <type>', 'Template type').choices(['full', 'minimal']))
+	.addOption(new Option('--gui', 'Include GUI (desktop) plugin support').default(false))
+	.addOption(new Option('--no-gui', 'Skip GUI plugin support'))
 	.addOption(new Option('-i, --install', 'Install dependencies automatically').default(true))
 	.addOption(new Option('--no-install', 'Skip dependency installation'))
 	.addOption(new Option('-g, --git', 'Initialize a Git repository').default(true))
@@ -186,6 +189,7 @@ async function create(
 			description: 'An awesome OpenCode plugin',
 			author: getGitAuthor() || 'Test Author',
 			templateType: cliTemplate || 'full',
+			gui: options.gui === true,
 			git: options.git !== false,
 			install: options.install !== false,
 			packageManager:
@@ -232,6 +236,14 @@ async function create(
 						],
 						initialValue: 'full',
 					}) as Promise<'full' | 'minimal'>
+				},
+				gui: () => {
+					if (options.gui === true) return Promise.resolve(true)
+					if (options.gui === false && options.noGui === true) return Promise.resolve(false)
+					return p.confirm({
+						message: 'Add GUI plugin support (Desktop)?',
+						initialValue: false,
+					})
 				},
 				name: ({ results: r }) =>
 					p.text({
@@ -290,6 +302,7 @@ async function create(
 			description: groupResult.description as string,
 			author: groupResult.author as string,
 			templateType: (groupResult.templateType || 'full') as 'full' | 'minimal',
+			gui: groupResult.gui as boolean,
 			git: groupResult.git as boolean,
 			install: groupResult.install as boolean,
 			packageManager: groupResult.packageManager as string | undefined,
@@ -329,6 +342,40 @@ async function create(
 	const sCopy = p.spinner()
 	sCopy.start('Generating plugin files...')
 	copyDir(templateDir, targetDir, replacements)
+
+	// Handle GUI files if not requested
+	if (!results.gui) {
+		try {
+			const { rmSync } = await import('node:fs')
+			const guiFiles = [join(targetDir, 'vite.config.ts'), join(targetDir, 'src', 'gui.tsx')]
+			for (const f of guiFiles) {
+				if (existsSync(f)) rmSync(f, { force: true })
+			}
+			// Remove GUI exports from package.json if they were added
+			const pkgPath = join(targetDir, 'package.json')
+			if (existsSync(pkgPath)) {
+				let pkg = readFileSync(pkgPath, 'utf-8')
+				// Remove gui-experimental export
+				pkg = pkg.replace(/,\s*"\.\/gui-experimental":\s*"\.\/dist\/gui-experimental\.cjs"/, '')
+				pkg = pkg.replace(/"\.\/gui-experimental":\s*"\.\/dist\/gui-experimental\.cjs",?\s*/g, '')
+				// Remove gui scripts
+				pkg = pkg.replace(/,\s*"build:gui":\s*"vite build"/, '')
+				pkg = pkg.replace(/,\s*"dev:gui":\s*"vite build --watch"/, '')
+				// Remove gui-related devDependencies
+				pkg = pkg.replace(/,\s*"@types\/node":\s*"[^"]*"/, '')
+				pkg = pkg.replace(/,\s*"electron":\s*"[^"]*"/, '')
+				pkg = pkg.replace(/,\s*"solid-js":\s*"[^"]*"/, '')
+				pkg = pkg.replace(/,\s*"vite":\s*"[^"]*"/, '')
+				pkg = pkg.replace(/,\s*"vite-plugin-solid":\s*"[^"]*"/, '')
+				// Clean up empty arrays/commas if possible (simple cleanup)
+				writeFileSync(pkgPath, pkg)
+			}
+		} catch (e) {
+			console.error(e)
+			// ignore cleanup errors
+		}
+	}
+
 	const fileCount = countFiles(targetDir)
 	sCopy.stop(`Plugin files generated! (${fileCount} files)`)
 
@@ -363,12 +410,16 @@ async function create(
 	const steps: string[] = []
 	if (!results.install) steps.push(`cd ${displayPath} && bun install`)
 	steps.push('bun run setup')
+	if (results.gui) {
+		steps.push('bun run build:gui')
+	}
 	steps.push('bun dev')
 
 	p.note(
 		[
 			'Target: ' + displayPath,
 			'Template: ' + results.templateType,
+			results.gui ? 'GUI: enabled (Desktop)' : 'GUI: disabled',
 			'',
 			...steps.map((s, i) => `${i + 1}. ${s}`),
 			'',
